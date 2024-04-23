@@ -28,11 +28,12 @@ string connectionString = @"Data Source=C:\Users\barbo\Onedrive\Desktop\English3
 List<string> words = new List<string>();
 
 
+
 //string? text = Console.ReadLine();
 using (SQLiteConnection connection = new SQLiteConnection(connectionString))
 {
     connection.Open();
-    SQLiteCommand cmd = new SQLiteCommand("Select word from words where meaning is null", connection);// meaning is null olanları çevir
+    SQLiteCommand cmd = new SQLiteCommand("Select word from words ", connection);// meaning is null olanları çevir
     SQLiteDataReader reader = cmd.ExecuteReader();
     for (int i = 0; reader.Read(); i++)
     {
@@ -77,6 +78,7 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
 
                         ceviriler.AddRange(cevir.Split(",".ToLower()));//İsteğe göre sonradan diğer çeviriler de kulanılabilir.
 
+
                         if (ceviriler[0] != null)
                         {
                             string dosyaYolu = "C:\\Users\\barbo\\OneDrive\\Desktop\\sikintiliKelimeler.txt";
@@ -84,30 +86,20 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
                             if (ceviriler[0].ToLower() == word.ToLower())
                             {
 
-                                // Dosyanın var olup olmadığını kontrol et
-                                if (!File.Exists(dosyaYolu))
-                                {
-                                    // Dosya yoksa, yeni bir dosya oluştur ve kelimeyi yaz
-                                    using (StreamWriter sw = File.CreateText(dosyaYolu))
-                                    {
-                                        sw.WriteLine(word);
-                                    }
-                                }
-                                else
-                                {
-                                    // Dosya varsa, dosyanın sonuna yeni kelimeyi ekle
-                                    using (StreamWriter sw = File.AppendText(dosyaYolu))
-                                    {
-                                        sw.WriteLine(word);
-                                    }
-                                }
+                               WriteToFile(dosyaYolu, word);
+
                                 Console.WriteLine(word + " *>" + ceviriler[0] + "***> Sıkıntılı Kelimeler Dosyasına Eklendi");
                             }
 
                             else
                             {
                                 if (IsOnlyLetters(ceviriler[0]))
-                                {
+                                { 
+                                    string kelime = ceviriler[0];
+                                    if (IsOnlyLetters(ceviriler[1]) && ceviriler[1] != null)
+                                    {
+                                        kelime += " / " + ceviriler[1];
+                                    }
                                     SQLiteCommand anlamEkle = new SQLiteCommand($"Update words set meaning= '{ceviriler[0]}' where word = '{word}';", connection);
                                     anlamEkle.Parameters.AddWithValue("@meaning", ceviriler[0]);
                                     anlamEkle.Parameters.AddWithValue("@word", word);
@@ -119,23 +111,7 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
                                 }
                                 else
                                 {
-                                    // Dosyanın var olup olmadığını kontrol et
-                                    if (!File.Exists(dosyaYolu))
-                                    {
-                                        // Dosya yoksa, yeni bir dosya oluştur ve kelimeyi yaz
-                                        using (StreamWriter sw = File.CreateText(dosyaYolu))
-                                        {
-                                            sw.WriteLine(word);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Dosya varsa, dosyanın sonuna yeni kelimeyi ekle
-                                        using (StreamWriter sw = File.AppendText(dosyaYolu))
-                                        {
-                                            sw.WriteLine(word);
-                                        }
-                                    }
+                                    WriteToFile(dosyaYolu, word);
                                     Console.WriteLine(word + " çevirisi hatalı. " + ceviriler[0]);
                                 }
                             }
@@ -165,6 +141,26 @@ bool IsOnlyLetters(string input)
             return false;
     }
     return true;
+}
+void WriteToFile(string dosyaYolu, string word)
+{
+    // Dosyanın var olup olmadığını kontrol et
+    if (!File.Exists(dosyaYolu))
+    {
+        // Dosya yoksa, yeni bir dosya oluştur ve kelimeyi yaz
+        using (StreamWriter sw = File.CreateText(dosyaYolu))
+        {
+            sw.WriteLine(word);
+        }
+    }
+    else
+    {
+        // Dosya varsa, dosyanın sonuna yeni kelimeyi ekle
+        using (StreamWriter sw = File.AppendText(dosyaYolu))
+        {
+            sw.WriteLine(word);
+        }
+    }
 }
         //MyMemort ile çeviri yapma
     //    using (HttpClient client = new HttpClient())
