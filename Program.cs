@@ -27,7 +27,7 @@ string connectionString = @"Data Source=C:\Users\barbo\Onedrive\Desktop\English3
 
 List<string> words = new List<string>();
 
-
+int iterasyon = 0;
 
 //string? text = Console.ReadLine();
 using (SQLiteConnection connection = new SQLiteConnection(connectionString))
@@ -40,10 +40,7 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
         words.Add(reader["word"].ToString().ToLower());
     }
 
-
     int kacKelimeCevirildi = 0;
-
-       
 
     using (HttpClient client = new HttpClient())
     {
@@ -51,6 +48,7 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
         {
             foreach (var word in words)
             {
+                iterasyon++;
                 string url = "https://en.glosbe.com/en/tr/";
                 // URL'yi doğru bir şekilde oluştur
                 string newUrl = url + word;
@@ -74,14 +72,17 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
 
                         // XPath sorgusu ile çeviri düğümünü seç
                         var ceviri = htmlDoc.DocumentNode.SelectSingleNode("//strong");
-                        var cevir = ceviri.InnerText.Trim();
+                        string dosyaYolu = "C:\\Users\\barbo\\OneDrive\\Desktop\\sikintiliKelimeler.txt";
+                        string dosyaYolu2 = "C:\\Users\\barbo\\OneDrive\\Desktop\\BuNeHataKiNe.txt";
 
+                        if (ceviri != null)
+                        {
+                         var cevir = ceviri.InnerText.Trim();
                         ceviriler.AddRange(cevir.Split(",".ToLower()));//İsteğe göre sonradan diğer çeviriler de kulanılabilir.
 
 
-                        if (ceviriler[0] != null)
+                            if (ceviriler[0] != null)
                         {
-                            string dosyaYolu = "C:\\Users\\barbo\\OneDrive\\Desktop\\sikintiliKelimeler.txt";
 
                             if (ceviriler[0].ToLower() == word.ToLower())
                             {
@@ -96,10 +97,14 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
                                 if (IsOnlyLetters(ceviriler[0]))
                                 { 
                                     string kelime = ceviriler[0];
-                                    if (IsOnlyLetters(ceviriler[1]) && ceviriler[1] != null)
+                                    if(ceviriler.Count>=2)
                                     {
-                                        kelime += " / " + ceviriler[1];
+                                        if (IsOnlyLetters(ceviriler[1]))
+                                        {
+                                            kelime += " / " + ceviriler[1];
+                                        }
                                     }
+                                    
                                     SQLiteCommand anlamEkle = new SQLiteCommand($"Update words set meaning= '{ceviriler[0]}' where word = '{word}';", connection);
                                     anlamEkle.Parameters.AddWithValue("@meaning", ceviriler[0]);
                                     anlamEkle.Parameters.AddWithValue("@word", word);
@@ -116,11 +121,55 @@ using (SQLiteConnection connection = new SQLiteConnection(connectionString))
                                 }
                             }
                         }
+                        }
+                        else
+                        {
+                            int deneme = kacKelimeCevirildi;
+                            using (HttpClient client2 = new HttpClient())
+                            {
+                                string apiUrl = $"https://api.mymemory.translated.net/get?q={word}&langpair=en|tr";
+                                HttpResponseMessage response2 = await client.GetAsync(apiUrl); // Bekleyerek sonucu al
+                                string responseBody = await response2.Content.ReadAsStringAsync(); // Bekleyerek içeriği al
+                                dynamic json = JObject.Parse(responseBody);
+                                string ceviri2 = json.responseData.translatedText;
+                                ceviri2.ToLower();
 
+                                if (ceviri2.ToLower() == word.ToLower())
+                                {
+                                    WriteToFile(dosyaYolu, word);
+                                }
+
+                                else
+                                {
+                                    if (IsOnlyLetters(ceviri2))
+                                    {
+                                        SQLiteCommand anlamEkle = new SQLiteCommand($"Update words set meaning= '{ceviri2}' where word = '{word}';", connection);
+                                        anlamEkle.Parameters.AddWithValue("@meaning", ceviri2);
+                                        anlamEkle.Parameters.AddWithValue("@word", word);
+
+                                        await anlamEkle.ExecuteNonQueryAsync();
+
+                                        kacKelimeCevirildi++;
+                                        Console.WriteLine(kacKelimeCevirildi + $". kelime çevrildi {word} -> {ceviri2}");
+                                    }
+                                    else
+                                    {
+                                        WriteToFile(dosyaYolu2, word);
+                                        Console.WriteLine(word + " çevirisi hatalı. " + ceviri2);
+                                        continue; // Döngünün bir sonraki iterasyonuna geç
+                                    }
+
+                                }
+                            }
+                                
+                        }
                     }
+                    Console.WriteLine(iterasyon + ". Kelimedeyiz.");
 
                 }
             }
+            Console.WriteLine("Kelime çevirme işlemi tamamlandı. Toplam " + kacKelimeCevirildi + " kelime çevrildi.");
+
         }
 
         catch (Exception e)
