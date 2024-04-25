@@ -13,32 +13,31 @@ namespace YourNamespace
 {
     public class YourClass
     {
-        private static readonly string connectionString = @"Data Source=C:\Users\barbo\Onedrive\Desktop\English3000Words.db";
+        private static readonly string connectionString = @"Data Source=C:\Users\barbo\Onedrive\Desktop\English5000Words.db";//Database
         private static readonly HttpClient httpClient = new HttpClient();
 
         public static async Task Main(string[] args)
         {
+            string dosyaYolu= "C:\\Users\\barbo\\OneDrive\\Desktop\\SorunluKelimeler5000.txt";   //
+            HashSet<string> words = new HashSet<string>(); /**/
 
-            string dosyaYolu= "C:\\Users\\barbo\\OneDrive\\Desktop\\SorunluKelimeler.txt";    
-            HashSet<string> words = new HashSet<string>(); /*GetWordsFromDatabase();*/
-
-            using (StreamReader sr = new StreamReader(dosyaYolu))
-            {
-                string line;
-                // Dosyanın sonuna kadar her satırı okuyun
-                while ((line = sr.ReadLine()) != null)
-                {
-                    // Okunan satırı listeye ekleyin
-                    words.Add(line.Trim(' '));
-                }
-            }
-            List<string> wordsList = new List<string>();
+            //using (StreamReader sr = new StreamReader(dosyaYolu))
+            //{
+            //    string line;
+            //    // Dosyanın sonuna kadar her satırı okuyun
+            //    while ((line = sr.ReadLine()) != null)
+            //    {
+            //        // Okunan satırı listeye ekleyin
+            //        words.Add(line.Trim(' '));
+            //}
+            //}
+            List<string> wordsList = GetWordsFromDatabase();
 
             int translatedWordsCount = 0;
             int indeks = 0;
             int kacTaneVar = 0;
 
-            foreach (var word in words)
+            foreach (var word in wordsList)
             {
                 try
                 {
@@ -47,7 +46,7 @@ namespace YourNamespace
                     if (string.IsNullOrEmpty(translation))
                     {
                         //WriteToFile(dosyaYolu, word);
-                        wordsList.Add(word);
+                        words.Add(word);
                         Console.WriteLine($"{word} çevirisi hatalı.");
                     }
                     else
@@ -88,7 +87,7 @@ namespace YourNamespace
                 }
             }
 
-            File.WriteAllLines(dosyaYolu, wordsList);// eğer tüm listeyi silip tekrar oluşturmak istiyorsak.
+            File.WriteAllLines(dosyaYolu, words);// eğer tüm listeyi silip tekrar oluşturmak istiyorsak.
 
             //// Dosyayı açın ve yazma modunda (append) açın
             //using (StreamWriter writer = File.AppendText(dosyaYolu))
@@ -107,23 +106,22 @@ namespace YourNamespace
 
         private static List<string> GetWordsFromDatabase()
         {
-            List<string> words = new List<string>();
-
+            HashSet<string> words = new HashSet<string>();
             using (SQLiteConnection connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
-                SQLiteCommand cmd = new SQLiteCommand("SELECT word, meaning FROM words where meaning is null or meaning=word", connection);
+                SQLiteCommand cmd = new SQLiteCommand("SELECT word FROM words where meaning is null", connection);
                 SQLiteDataReader reader = cmd.ExecuteReader();
                 int kacTane = 0;
                 while (reader.Read())
                 {
-                        kacTane++;
-                        words.Add(reader["word"].ToString());
+                    kacTane++;
+                    words.Add(reader["word"].ToString());
                 }
                 Console.WriteLine(kacTane + " tane kelime var");
             }
 
-            return words;
+            return words.ToList();
         }
 
 
@@ -163,6 +161,8 @@ namespace YourNamespace
                     if (translations.Count > 1)
                         result = translations[0] + "," + translations[1];
                 }
+                else 
+                    return await TranslateWord2(word);
             }
             else if (!response.IsSuccessStatusCode || result == null)
             {
