@@ -13,12 +13,12 @@ namespace YourNamespace
 {
     public class YourClass
     {
-        private static readonly string connectionString = @"Data Source=C:\Users\barbo\Onedrive\Desktop\English5000Words.db";//Database
+        private static readonly string connectionString = @"Data Source=C:\Users\barbo\source\repos\Translateee\SqLiteDbAndTxts\English5000Words.db";//Database
         private static readonly HttpClient httpClient = new HttpClient();
 
         public static async Task Main(string[] args)
         {
-            string dosyaYolu= "C:\\Users\\barbo\\OneDrive\\Desktop\\SorunluKelimeler5000.txt";   //
+            string dosyaYolu= "C:\\Users\\barbo\\source\\repos\\Translateee\\SqLiteDbAndTxts\\SorunluKelimeler5000.txt";   //
             HashSet<string> words = new HashSet<string>(); /**/
 
             //using (StreamReader sr = new StreamReader(dosyaYolu))
