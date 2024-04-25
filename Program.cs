@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Net;
 
 namespace YourNamespace
 {
@@ -61,12 +62,11 @@ namespace YourNamespace
             using (SQLiteConnection connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
-                SQLiteCommand cmd = new SQLiteCommand("SELECT word FROM words where meaning is null", connection);
+                SQLiteCommand cmd = new SQLiteCommand("SELECT word, meaning FROM words where meaning is null or meaning=word", connection);
                 SQLiteDataReader reader = cmd.ExecuteReader();
                 int kacTane = 0;
                 while (reader.Read())
                 {
-                    
                         kacTane++;
                         words.Add(reader["word"].ToString());
                 }
@@ -95,7 +95,11 @@ namespace YourNamespace
                 if (translationNode != null)
                 {
                     string translation = translationNode.InnerText.Trim();
-                    translations.AddRange(translation.Split(","));
+
+                    // Alınan verileri temizlemek için HtmlDecode fonksiyonunu kullanarak gerçek karakterlere dönüştürün
+                    string decodedTranslation = WebUtility.HtmlDecode(translation);
+
+                    translations.AddRange(decodedTranslation.Split(","));
                     foreach(var i in translations)
                     {
                         if (ContainsSymbolExceptSpaceAndComma(i))
@@ -105,17 +109,15 @@ namespace YourNamespace
                         }
 
                     }
+                    result = translations[0];
                     if (translations.Count > 1)
                         result = translations[0] + ", " + translations[1];
-                   
                 }
             }
             else if (!response.IsSuccessStatusCode || result == null)
             {
                 result = await TranslateWord2(word);
             }
-            if (!IsOnlyLetters(result))
-                result = null;
 
             return result;
 
@@ -131,11 +133,11 @@ namespace YourNamespace
             dynamic json = JObject.Parse(responseBody);
             string ceviri2 = json.responseData.translatedText;
             int kacKelime = ceviri2.Split(" ").Count();
-            if (IsOnlyLetters(ceviri2) &&ceviri2 != null && ceviri2 != "" && ceviri2 != " " && ceviri2 != "." && ceviri2 != "NA" && ceviri2 != word && kacKelime <= 2)
+            if (IsOnlyLetters(ceviri2) && ceviri2 != "." && ceviri2 != "NA" && ceviri2 != word && kacKelime <= 2)
             {
                 return ceviri2.ToLower();
             }
-            return word;
+            return null;
         }
     }
 
@@ -144,7 +146,7 @@ namespace YourNamespace
             using (SQLiteConnection connection = new SQLiteConnection(connectionString))
             {
                 connection.Open();
-                SQLiteCommand cmd = new SQLiteCommand($"UPDATE words SET meaning = @meaning WHERE word = @word", connection);
+                SQLiteCommand cmd = new SQLiteCommand($"UPDATE words SET meaning = @meaning WHERE word = @word ", connection);
                 cmd.Parameters.AddWithValue("@meaning", meaning);
                 cmd.Parameters.AddWithValue("@word", word);
                 cmd.ExecuteNonQuery();
