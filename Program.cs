@@ -19,28 +19,65 @@ namespace YourNamespace
         public static async Task Main(string[] args)
         {
 
+            string dosyaYolu= "C:\\Users\\barbo\\OneDrive\\Desktop\\SorunluKelimeler.txt";    
+            HashSet<string> words = new HashSet<string>(); /*GetWordsFromDatabase();*/
 
-            List<string> words = GetWordsFromDatabase();
+            using (StreamReader sr = new StreamReader(dosyaYolu))
+            {
+                string line;
+                // Dosyanın sonuna kadar her satırı okuyun
+                while ((line = sr.ReadLine()) != null)
+                {
+                    // Okunan satırı listeye ekleyin
+                    words.Add(line.Trim(' '));
+                }
+            }
+            List<string> wordsList = new List<string>();
 
             int translatedWordsCount = 0;
             int indeks = 0;
+            int kacTaneVar = 0;
 
             foreach (var word in words)
             {
                 try
                 {
                     string translation = await TranslateWord(word);
-
+                   
                     if (string.IsNullOrEmpty(translation))
                     {
-                        WriteToFile("C:\\Users\\barbo\\OneDrive\\Desktop\\SikintiKelimelerim.txt", word);
+                        //WriteToFile(dosyaYolu, word);
+                        wordsList.Add(word);
                         Console.WriteLine($"{word} çevirisi hatalı.");
                     }
                     else
                     {
-                        UpdateWordMeaningInDatabase(word, translation);
-                        translatedWordsCount++;
-                        Console.WriteLine($"{translatedWordsCount}. kelime çevrildi: {word} -> {translation}");
+                        bool kelimeVarMi = false;
+
+                        using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+                        {
+                            connection.Open();
+                            SQLiteCommand cmd = new SQLiteCommand("SELECT word, meaning FROM words where word=@word", connection);
+                            cmd.Parameters.AddWithValue("@word", word);
+
+                            SQLiteDataReader reader = cmd.ExecuteReader();
+                            while (reader.Read())
+                            {
+                                if (reader["meaning"].ToString() == translation)
+                                {
+                                    Console.WriteLine($"{word} zaten veritabanında mevcut.");
+                                    kacTaneVar++;
+                                    kelimeVarMi = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!kelimeVarMi)
+                        {
+                            UpdateWordMeaningInDatabase(word, translation);
+                            translatedWordsCount++;
+                            Console.WriteLine($"{translatedWordsCount}. kelime çevrildi: {word} -> {translation}");
+                        }
                     }
                     indeks++;
                     Console.WriteLine(indeks + ". satırdayız");
@@ -51,7 +88,20 @@ namespace YourNamespace
                 }
             }
 
+            File.WriteAllLines(dosyaYolu, wordsList);// eğer tüm listeyi silip tekrar oluşturmak istiyorsak.
+
+            //// Dosyayı açın ve yazma modunda (append) açın
+            //using (StreamWriter writer = File.AppendText(dosyaYolu))
+            //{
+            //    // Güncellenmiş satırları dosyaya yazın
+            //    foreach (string line in wordsList)
+            //    {
+            //        writer.WriteLine(line);
+            //    }
+            //}
+
             Console.WriteLine($"Kelime çevirme işlemi tamamlandı. Toplam {translatedWordsCount} kelime çevrildi.");
+            Console.WriteLine(kacTaneVar + " tane kelime zaten veritabanında mevcuttu.");
         }
       
 
@@ -111,7 +161,7 @@ namespace YourNamespace
                     }
                     result = translations[0];
                     if (translations.Count > 1)
-                        result = translations[0] + ", " + translations[1];
+                        result = translations[0] + "," + translations[1];
                 }
             }
             else if (!response.IsSuccessStatusCode || result == null)
