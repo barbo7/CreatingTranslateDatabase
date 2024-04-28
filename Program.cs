@@ -8,36 +8,42 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Net;
+using System.ComponentModel;
 
 namespace YourNamespace
 {
     public class YourClass
     {
-        private static readonly string connectionString = @"Data Source=C:\Users\barbo\source\repos\Translateee\SqLiteDbAndTxts\English5000Words.db";//Database
+        private static readonly string connectionString = @"Data Source=C:\Users\barbo\source\repos\barbo7\Kelimecim\Resources\KelimecimDb.db";//Database
         private static readonly HttpClient httpClient = new HttpClient();
 
         public static async Task Main(string[] args)
         {
-            string dosyaYolu= "C:\\Users\\barbo\\source\\repos\\Translateee\\SqLiteDbAndTxts\\SorunluKelimeler5000.txt";   //
-            HashSet<string> words = new HashSet<string>(); /**/
+            List<string> words = new List<string>();
+            List<string> almancaKelimeler = new List<string>(); /*await classim.veriCek();*/
 
-            //using (StreamReader sr = new StreamReader(dosyaYolu))
-            //{
-            //    string line;
-            //    // Dosyanın sonuna kadar her satırı okuyun
-            //    while ((line = sr.ReadLine()) != null)
-            //    {
-            //        // Okunan satırı listeye ekleyin
-            //        words.Add(line.Trim(' '));
-            //}
-            //}
-            List<string> wordsList = GetWordsFromDatabase();
+
+            string dosyaYolu = "C:\\Users\\barbo\\OneDrive\\Desktop\\almancaKelimeler.txt";   //
+            //HashSet<string> words = new HashSet<string>(); /**/
+
+            using (StreamReader sr = new StreamReader(dosyaYolu))
+            {
+                string line;
+                // Dosyanın sonuna kadar her satırı okuyun
+                while ((line = sr.ReadLine()) != null)
+                {
+                    // Okunan satırı listeye ekleyin
+                    almancaKelimeler.Add(line.Trim(' '));
+                }
+            }
+            //List<string> wordsList = GetWordsFromDatabase();
+            YourClass classim = new YourClass();
 
             int translatedWordsCount = 0;
             int indeks = 0;
             int kacTaneVar = 0;
 
-            foreach (var word in wordsList)
+            foreach (var word in almancaKelimeler)
             {
                 try
                 {
@@ -51,32 +57,33 @@ namespace YourNamespace
                     }
                     else
                     {
-                        bool kelimeVarMi = false;
+                        //bool kelimeVarMi = false;
 
-                        using (SQLiteConnection connection = new SQLiteConnection(connectionString))
-                        {
-                            connection.Open();
-                            SQLiteCommand cmd = new SQLiteCommand("SELECT word, meaning FROM words where word=@word", connection);
-                            cmd.Parameters.AddWithValue("@word", word);
+                        //using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+                        //{
+                        //    connection.Open();
+                        //    SQLiteCommand cmd = new SQLiteCommand("SELECT word, meaning FROM words where word=@word", connection);
+                        //    cmd.Parameters.AddWithValue("@word", word);
 
-                            SQLiteDataReader reader = cmd.ExecuteReader();
-                            while (reader.Read())
-                            {
-                                if (reader["meaning"].ToString() == translation)
-                                {
-                                    Console.WriteLine($"{word} zaten veritabanında mevcut.");
-                                    kacTaneVar++;
-                                    kelimeVarMi = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!kelimeVarMi)
-                        {
-                            UpdateWordMeaningInDatabase(word, translation);
+                        //    SQLiteDataReader reader = cmd.ExecuteReader();
+                        //    while (reader.Read())
+                        //    {
+                        //        if (reader["meaning"].ToString() == translation)
+                        //        {
+                        //            Console.WriteLine($"{word} zaten veritabanında mevcut.");
+                        //            kacTaneVar++;
+                        //            kelimeVarMi = true;
+                        //            break;
+                        //        }
+                        //    }
+                        //}
+                        //if (!kelimeVarMi)
+                        //{
+                            //UpdateWordMeaningInDatabase(word, translation);
+                            classim.KelimeEkle(word, translation);
                             translatedWordsCount++;
                             Console.WriteLine($"{translatedWordsCount}. kelime çevrildi: {word} -> {translation}");
-                        }
+                        //}
                     }
                     indeks++;
                     Console.WriteLine(indeks + ". satırdayız");
@@ -102,7 +109,48 @@ namespace YourNamespace
             Console.WriteLine($"Kelime çevirme işlemi tamamlandı. Toplam {translatedWordsCount} kelime çevrildi.");
             Console.WriteLine(kacTaneVar + " tane kelime zaten veritabanında mevcuttu.");
         }
-      
+
+        private async Task<List<string>> veriCek()
+        {
+            List<string> words = new List<string>();
+
+            HttpClient httpClient = new HttpClient();
+
+            string url = "https://strommeninc.com/1000-most-common-german-words-frequency-vocabulary/";
+
+            HttpResponseMessage response = await httpClient.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var html = await response.Content.ReadAsStreamAsync();//*[@id="post-115"]/div/div/table/tbody/tr[2]/td[2]
+                var htmlDoc = new HtmlDocument();
+                htmlDoc.Load(html);
+
+                // XPath to fetch all td elements in the specific tr
+                var nodes = htmlDoc.DocumentNode.SelectNodes("//div[@class = 'entry-content clear']//table//tbody//tr//td[2]");
+
+                if (nodes != null)
+                {
+                    foreach (var node in nodes)
+                    {
+                        words.Add(node.InnerText.Trim());
+                    }
+                }
+            }
+            return words;
+
+        }
+        private void KelimeEkle(string word, string meaning)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(connectionString))
+            {
+                connection.Open();
+                SQLiteCommand cmd = new SQLiteCommand("INSERT INTO Deutch1000Words (word, meaning) VALUES (@word, @meaning)", connection);
+                cmd.Parameters.AddWithValue("@word", word);
+                cmd.Parameters.AddWithValue("@meaning", meaning);
+                cmd.ExecuteNonQuery();
+            }
+        }
 
         private static List<string> GetWordsFromDatabase()
         {
@@ -128,7 +176,7 @@ namespace YourNamespace
         private static async Task<string> TranslateWord(string word)
         {
             word.ToLower();
-            string url = $"https://en.glosbe.com/en/tr/{word}";
+            string url = $"https://en.glosbe.com/de/tr/{word}";
             HttpResponseMessage response = await httpClient.GetAsync(url);
             string? result = null;
 
@@ -148,17 +196,17 @@ namespace YourNamespace
                     string decodedTranslation = WebUtility.HtmlDecode(translation);
 
                     translations.AddRange(decodedTranslation.Split(","));
-                    foreach(var i in translations)
-                    {
-                        if (ContainsSymbolExceptSpaceAndComma(i))
-                        {
-                            // Eğer sembol içeren bir çeviri bulunursa, alternatif çeviri servisine yönlendir
-                            return await TranslateWord2(word);
-                        }
+                    //foreach(var i in translations)
+                    //{
+                    //    if (ContainsSymbolExceptSpaceAndComma(i))
+                    //    {
+                    //        // Eğer sembol içeren bir çeviri bulunursa, alternatif çeviri servisine yönlendir
+                    //        return await TranslateWord2(word);
+                    //    }
 
-                    }
+                    //}
                     result = translations[0];
-                    if (translations.Count > 1)
+                    if (translations.Count > 1 && translation[0].ToString().ToLower() != translation[1].ToString().ToLower())
                         result = translations[0] + "," + translations[1];
                 }
                 else 
